@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ekzhang/ssh-hypervisor/internal"
+	"github.com/sirupsen/logrus"
 )
 
 func TestNewManager(t *testing.T) {
@@ -18,7 +19,7 @@ func TestNewManager(t *testing.T) {
 		DataDir:  "/tmp/ssh-hypervisor-test",
 	}
 
-	manager, err := NewManager(config)
+	manager, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()))
 	if err != nil {
 		t.Fatalf("Failed to create VM manager: %v", err)
 	}
@@ -48,7 +49,7 @@ func TestManagerInvalidCIDR(t *testing.T) {
 		DataDir:  "/tmp/ssh-hypervisor-test",
 	}
 
-	_, err := NewManager(config)
+	_, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()))
 	if err == nil {
 		t.Errorf("Expected error with invalid CIDR")
 	}
@@ -69,7 +70,7 @@ func TestVMCreationFlow(t *testing.T) {
 		DataDir:  tempDir,
 	}
 
-	manager, err := NewManager(config)
+	manager, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()))
 	if err != nil {
 		t.Fatalf("Failed to create VM manager: %v", err)
 	}
@@ -167,7 +168,7 @@ func TestGetVM(t *testing.T) {
 		DataDir:  tempDir,
 	}
 
-	manager, err := NewManager(config)
+	manager, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()))
 	if err != nil {
 		t.Fatalf("Failed to create VM manager: %v", err)
 	}

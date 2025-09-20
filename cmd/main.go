@@ -5,12 +5,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/ekzhang/ssh-hypervisor/internal"
 	"github.com/ekzhang/ssh-hypervisor/internal/server"
+	"github.com/sirupsen/logrus"
 )
+
+var log *logrus.Logger = logrus.StandardLogger()
 
 func main() {
 	var (
@@ -52,7 +54,7 @@ func main() {
 		log.Fatalf("Configuration error: %v", err)
 	}
 
-	srv, err := server.NewServer(config)
+	srv, err := server.NewServer(config, logrus.NewEntry(log))
 	if err != nil {
 		log.Fatalf("Failed to create server: %v", err)
 	}

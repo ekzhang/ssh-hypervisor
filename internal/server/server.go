@@ -6,6 +6,7 @@ import (
 
 	"github.com/ekzhang/ssh-hypervisor/internal"
 	"github.com/ekzhang/ssh-hypervisor/internal/vm"
+	"github.com/sirupsen/logrus"
 )
 
 // Server represents the SSH hypervisor server
@@ -15,8 +16,8 @@ type Server struct {
 }
 
 // NewServer creates a new SSH hypervisor server
-func NewServer(config *internal.Config) (*Server, error) {
-	vmManager, err := vm.NewManager(config)
+func NewServer(config *internal.Config, logger logrus.FieldLogger) (*Server, error) {
+	vmManager, err := vm.NewManager(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create VM manager: %w", err)
 	}

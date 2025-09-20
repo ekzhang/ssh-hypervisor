@@ -1,11 +1,9 @@
-//go:build linux && (amd64 || arm64)
-
-package main
+package vm
 
 import _ "embed"
 
-//go:generate ../scripts/download-firecracker.sh
-//go:generate ../scripts/download-vmlinux.sh
+//go:generate ../../scripts/download-firecracker.sh
+//go:generate ../../scripts/download-vmlinux.sh
 
 //go:embed binaries/firecracker
 var firecrackerBinary []byte

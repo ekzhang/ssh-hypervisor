@@ -23,27 +23,17 @@ if [[ -f "$FIRECRACKER_PATH" ]]; then
 else
   echo "Downloading Firecracker binary for $ARCH..."
 
-  # Try direct binary download first
-  BINARY_URL="$BASE_URL/$FIRECRACKER_VERSION/firecracker-$ARCH"
-  echo "Trying direct binary: $BINARY_URL"
+  # Fallback to tarball
+  TARBALL_URL="$BASE_URL/$FIRECRACKER_VERSION/firecracker-$FIRECRACKER_VERSION-$ARCH.tgz"
+  echo "Downloading tarball: $TARBALL_URL"
 
-  if curl -L -f -o "$FIRECRACKER_PATH" "$BINARY_URL" 2>/dev/null; then
-    echo "Direct binary download successful"
-  else
-    echo "Direct binary failed, trying tarball..."
+  TEMP_TAR=$(mktemp)
+  trap "rm -f $TEMP_TAR" EXIT
 
-    # Fallback to tarball
-    TARBALL_URL="$BASE_URL/$FIRECRACKER_VERSION/firecracker-$FIRECRACKER_VERSION-$ARCH.tgz"
-    echo "Downloading tarball: $TARBALL_URL"
+  curl -L -f -o "$TEMP_TAR" "$TARBALL_URL"
 
-    TEMP_TAR=$(mktemp)
-    trap "rm -f $TEMP_TAR" EXIT
-
-    curl -L -f -o "$TEMP_TAR" "$TARBALL_URL"
-
-    # Extract firecracker binary from tarball
-    tar -tzf "$TEMP_TAR" | grep -E 'firecracker$' | head -1 | xargs tar -xzf "$TEMP_TAR" -O > "$FIRECRACKER_PATH"
-  fi
+  # Extract firecracker binary from tarball
+  tar -tzf "$TEMP_TAR" | grep -E "firecracker-v.*-$ARCH\$" | head -1 | xargs tar -xzf "$TEMP_TAR" -O > "$FIRECRACKER_PATH"
 
   # Make executable
   chmod +x "$FIRECRACKER_PATH"
