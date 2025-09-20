@@ -35,7 +35,7 @@ To build the project:
 go generate ./...
 
 # Build the binary (static linking, no CGO dependencies)
-CGO_ENABLED=0 go build ./cmd -o ssh-hypervisor
+CGO_ENABLED=0 go build -o ssh-hypervisor ./cmd
 ```
 
 To run tests, just use `go test` directly.
