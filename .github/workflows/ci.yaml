@@ -52,5 +52,8 @@ jobs:
           ./ssh-hypervisor -version || true
           # Note: This will show version and exit, which is expected
 
+      - name: Add CI user to kvm group
+        run: sudo usermod -aG kvm $USER && newgrp kvm
+
       - name: Run tests
         run: go test -v ./...
