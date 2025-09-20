@@ -15,6 +15,7 @@ type Config struct {
 	VMMemory int    // VM memory in MB
 	VMCPUs   int    // Number of VM CPUs
 	DataDir  string // Directory for VM snapshots and data
+	Rootfs   string // Path to rootfs image
 }
 
 // Validate checks if the configuration is valid
@@ -52,6 +53,14 @@ func (c *Config) Validate() error {
 	// Generate host key path if not provided
 	if c.HostKey == "" {
 		c.HostKey = filepath.Join(c.DataDir, "ssh_host_key")
+	}
+
+	// Validate rootfs image
+	if c.Rootfs == "" {
+		return fmt.Errorf("rootfs image path is required")
+	}
+	if _, err := os.Stat(c.Rootfs); os.IsNotExist(err) {
+		return fmt.Errorf("rootfs image not found: %s", c.Rootfs)
 	}
 
 	return nil

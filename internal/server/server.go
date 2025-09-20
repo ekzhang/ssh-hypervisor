@@ -5,17 +5,25 @@ import (
 	"log"
 
 	"github.com/ekzhang/ssh-hypervisor/internal"
+	"github.com/ekzhang/ssh-hypervisor/internal/vm"
 )
 
 // Server represents the SSH hypervisor server
 type Server struct {
-	config *internal.Config
+	config    *internal.Config
+	vmManager *vm.Manager
 }
 
 // NewServer creates a new SSH hypervisor server
 func NewServer(config *internal.Config) (*Server, error) {
+	vmManager, err := vm.NewManager(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create VM manager: %w", err)
+	}
+
 	return &Server{
-		config: config,
+		config:    config,
+		vmManager: vmManager,
 	}, nil
 }
 
@@ -29,9 +37,11 @@ func (s *Server) Run() error {
 	log.Printf("  VM CPUs: %d", s.config.VMCPUs)
 	log.Printf("  Data directory: %s", s.config.DataDir)
 
+	log.Printf("VM manager initialized successfully")
+
 	// TODO: Initialize Wish SSH server
-	// TODO: Set up VM management
 	// TODO: Set up networking (TAP devices)
+	// TODO: Integrate VM provisioning with SSH connections
 
 	return fmt.Errorf("server implementation not yet complete")
 }

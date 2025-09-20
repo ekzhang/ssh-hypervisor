@@ -1,2 +1,5 @@
 .claude/
 binaries/
+
+# Compiled binary
+/ssh-hypervisor

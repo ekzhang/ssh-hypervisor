@@ -6,7 +6,7 @@ _Like SimCity, but for virtual machines!_
 
 ```bash
 # Dynamically create a VM, or restore past state from snapshot.
-ssh yourname@hypervisor.ekzhang.com
+ssh yourname@vmcity.ekzhang.com
 
 $ whoami  # You are now SSH'd into the VM!
 ```
@@ -25,3 +25,21 @@ System requirements:
 - [KVM](https://linux-kvm.org/page/Main_Page) – check `stat /dev/kvm`
 
 Idle VMs are automatically suspended with a [snapshot](https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/snapshot-support.md) that is stored on disk. If the same user logs in within a time period, they receive a snapshot of the previous VM state that gets resumed.
+
+## Development
+
+To build the project:
+
+```bash
+# Download platform-specific Firecracker binary
+go generate ./...
+
+# Build the binary (static linking, no CGO dependencies)
+CGO_ENABLED=0 go build ./cmd -o ssh-hypervisor
+```
+
+To run tests, just use `go test` directly.
+
+```bash
+go test -v ./...
+```
