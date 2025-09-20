@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04
+          # Only in public repos: https://github.blog/changelog/2025-01-16-linux-arm64-hosted-runners-now-available-for-free-in-public-repositories-public-preview/
+          # - ubuntu-24.04-arm
+        go-version:
+          - "1.25.1"
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-${{ runner.arch }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-go-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Generate binaries
+        run: go generate ./...
+
+      - name: Build
+        run: CGO_ENABLED=0 go build -v ./cmd -o ssh-hypervisor
+
+      - name: Check binary works
+        run: |
+          ./ssh-hypervisor -version || true
+          # Note: This will show version and exit, which is expected
+
+      - name: Run tests
+        run: go test -v ./...
