@@ -2,10 +2,10 @@
 
 _Like SimCity, but for virtual machines!_
 
-`ssh-hypervisor` is an SSH server that dynamically provisions Linux microVMs. Once set up, you can just SSH into it from anywhere to instantly allocate a fresh VM.
+`ssh-hypervisor` is an SSH server that dynamically provisions Linux microVMs with [Firecracker](https://github.com/firecracker-microvm/firecracker). Once set up, you can just SSH into it from anywhere to instantly allocate a fresh VM.
 
 ```bash
-# Dynamically create a Firecracker VM, or restores from snapshot.
+# Dynamically create a VM, or restore past state from snapshot.
 ssh yourname@hypervisor.ekzhang.com
 
 $ whoami  # You are now SSH'd into the VM!
@@ -13,7 +13,7 @@ $ whoami  # You are now SSH'd into the VM!
 
 Just for fun! Not intended to be used in production at this time.
 
-I could see it potentially becoming a useful internal service for provisioning lightweight VMs, since many languages have SSH client libraries. Let's discuss if you want to make this happen.
+I could see it potentially becoming a useful building block for provisioning lightweight VMs, since many languages have SSH client libraries. Let's discuss if you want to make this happen.
 
 ## Usage
 
