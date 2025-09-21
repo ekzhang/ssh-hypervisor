@@ -37,10 +37,13 @@ go generate ./...
 
 # Build the binary (static linking, no CGO dependencies)
 CGO_ENABLED=0 go build -o ssh-hypervisor ./cmd
+
+# Grant required CAP_NET_ADMIN to the binary
+sudo setcap cap_net_admin+ep ./ssh-hypervisor
 ```
 
 To run tests, just use `go test` directly.
 
 ```bash
-go test -v ./...
+go test -v -exec sudo ./...
 ```
