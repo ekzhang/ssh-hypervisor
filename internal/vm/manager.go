@@ -218,6 +218,17 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 		Setpgid: true,
 	}
 
+	// Capture VM console output (boot logs, OpenRC, SSH, etc.)
+	logPath := filepath.Join(vm.dataDir, "console.log")
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create log file: %w", err)
+	}
+	defer logFile.Close()
+
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+
 	machine, err := firecracker.NewMachine(
 		ctx, cfg,
 		firecracker.WithProcessRunner(cmd),
