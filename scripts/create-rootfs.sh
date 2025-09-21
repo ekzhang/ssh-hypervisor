@@ -1,15 +1,28 @@
 # Script to create a rootfs for hypervisor use. You can customize this!
 
+set -euo pipefail
+
 dd if=/dev/zero of=rootfs.ext4 bs=1M count=50  # 50 MB disk image
 mkfs.ext4 rootfs.ext4
 rootfs_dir="$(mktemp -d -p "$PWD" rootfs.XXXX)"
 chmod 755 "$rootfs_dir"
 sudo mount rootfs.ext4 "$rootfs_dir"
 
+cleanup() {
+  if [[ -n "${rootfs_dir:-}" && -d "$rootfs_dir" ]]; then
+    sudo umount "$rootfs_dir" 2>/dev/null || true
+    rmdir "$rootfs_dir"
+  fi
+}
+
+trap cleanup EXIT
+
 # Start a container to copy files into the rootfs image
 docker run -i --rm \
   -v "$rootfs_dir":/my-rootfs \
   alpine sh <<EOF
+set -euo pipefail
+
 apk add --no-cache openrc
 apk add --no-cache util-linux openssh
 
@@ -23,7 +36,6 @@ rc-update add devfs boot
 rc-update add procfs boot
 rc-update add sysfs boot
 rc-update add dmesg boot
-rc-update add mdev boot
 
 rc-update add sshd default
 
@@ -46,8 +58,5 @@ for d in bin etc lib root sbin usr; do tar c "/\$d" | tar x -C /my-rootfs; done
 
 for dir in dev proc run sys var; do mkdir /my-rootfs/\${dir}; done
 EOF
-
-sudo umount "$rootfs_dir"
-rmdir "$rootfs_dir"
 
 echo "Rootfs image created successfully: rootfs.ext4"
