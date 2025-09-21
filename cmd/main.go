@@ -3,12 +3,16 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/ekzhang/ssh-hypervisor/internal"
-	"github.com/ekzhang/ssh-hypervisor/internal/server"
+	// "github.com/ekzhang/ssh-hypervisor/internal/server"
+	"github.com/ekzhang/ssh-hypervisor/internal/vm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -61,16 +65,60 @@ func main() {
 		log.Fatalf("Configuration error: %v", err)
 	}
 
-	srv, err := server.NewServer(config, logrus.NewEntry(log))
+	// Original server code (commented out for testing)
+	// srv, err := server.NewServer(config, logrus.NewEntry(log))
+	// if err != nil {
+	// 	log.Fatalf("Failed to create server: %v", err)
+	// }
+	//
+	// log.Printf("Starting ssh-hypervisor on port %d", config.Port)
+	// log.Printf("VM network: %s", config.VMCIDR)
+	// log.Printf("Data directory: %s", config.DataDir)
+	//
+	// if err := srv.Run(); err != nil {
+	// 	log.Fatalf("Server error: %v", err)
+	// }
+
+	// Temporary: Create VM manager and single VM for testing
+	manager, err := vm.NewManager(config, log)
 	if err != nil {
-		log.Fatalf("Failed to create server: %v", err)
+		log.Fatalf("Failed to create VM manager: %v", err)
 	}
 
-	log.Printf("Starting ssh-hypervisor on port %d", config.Port)
+	// Create context for VM lifecycle
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	log.Printf("Creating Firecracker VM...")
 	log.Printf("VM network: %s", config.VMCIDR)
 	log.Printf("Data directory: %s", config.DataDir)
 
-	if err := srv.Run(); err != nil {
-		log.Fatalf("Server error: %v", err)
+	// Create a single VM
+	testVM, err := manager.CreateVM(ctx, "test-user", vm.GetFirecrackerBinary(), vm.GetVmlinuxBinary())
+	if err != nil {
+		log.Fatalf("Failed to create VM: %v", err)
+	}
+
+	log.Printf("VM created successfully!")
+	log.Printf("VM ID: %s", testVM.ID)
+	log.Printf("VM IP: %s", testVM.IP)
+	log.Printf("VM Gateway: %s", testVM.Gateway)
+	log.Printf("VM Netmask: %s", testVM.Netmask)
+
+	// Setup signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	log.Printf("VM is running. Press Ctrl+C to shutdown gracefully...")
+
+	// Wait for shutdown signal
+	<-sigChan
+	log.Printf("Received shutdown signal, stopping VM...")
+
+	// Gracefully shutdown VM
+	if err := manager.DestroyVM(testVM.ID); err != nil {
+		log.Errorf("Error stopping VM: %v", err)
+	} else {
+		log.Printf("VM stopped successfully")
 	}
 }

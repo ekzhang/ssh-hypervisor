@@ -1,5 +1,6 @@
 .claude/
 binaries/
 
-# Compiled binary
+# Compiled binary outputs
 /ssh-hypervisor
+/rootfs.ext4

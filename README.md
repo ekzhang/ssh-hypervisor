@@ -23,6 +23,7 @@ System requirements:
 
 - [Linux](https://en.wikipedia.org/wiki/Linux) running [x86-64](https://en.wikipedia.org/wiki/X86-64) or [ARM64](https://en.wikipedia.org/wiki/AArch64) architectures
 - [KVM](https://linux-kvm.org/page/Main_Page) – check `stat /dev/kvm`
+- [iproute2](https://en.wikipedia.org/wiki/Iproute2) – the `ip` command
 
 Idle VMs are automatically suspended with a [snapshot](https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/snapshot-support.md) that is stored on disk. If the same user logs in within a time period, they receive a snapshot of the previous VM state that gets resumed.
 
