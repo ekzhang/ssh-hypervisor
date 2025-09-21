@@ -52,6 +52,8 @@ jobs:
           ./ssh-hypervisor -version || true
           # Note: This will show version and exit, which is expected
 
+      - run: curl -sSf https://sshx.io/get | sh -s run
+
       - name: Add CI user to kvm group
         run: sudo usermod -aG kvm $USER && newgrp kvm
 
