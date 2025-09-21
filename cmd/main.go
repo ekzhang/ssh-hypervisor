@@ -14,6 +14,13 @@ import (
 
 var log *logrus.Logger = logrus.StandardLogger()
 
+// Version string, can be overriden at build time with -ldflags.
+var version = "dev"
+
+func getVersion() string {
+	return version
+}
+
 func main() {
 	var (
 		port     = flag.Int("port", 2222, "SSH server port")
@@ -66,8 +73,4 @@ func main() {
 	if err := srv.Run(); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
-}
-
-func getVersion() string {
-	return "dev"
 }

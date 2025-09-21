@@ -63,51 +63,8 @@ func TestVMIntegrationWithRealBinaries(t *testing.T) {
 	defer cancel()
 
 	vm, err := manager.CreateVM(ctx, userID, firecrackerBinary, vmlinuxBinary)
-
-	// We expect this to potentially fail during configuration since we don't have a real rootfs
-	// But it should get further than the fake binary tests
 	if err != nil {
-		t.Logf("VM creation failed as expected with minimal test setup: %v", err)
-
-		// Verify that the VM setup got further than just writing files
-		expectedVMDir := filepath.Join(tempDir, "vm-"+userID)
-
-		// Check that VM directory was created
-		if _, err := os.Stat(expectedVMDir); os.IsNotExist(err) {
-			t.Errorf("Expected VM directory %s to be created", expectedVMDir)
-			return
-		}
-
-		// Check that real firecracker binary was written
-		firecrackerPath := filepath.Join(expectedVMDir, "firecracker")
-		if stat, err := os.Stat(firecrackerPath); err != nil {
-			t.Errorf("Failed to stat firecracker binary: %v", err)
-		} else if stat.Size() != int64(len(firecrackerBinary)) {
-			t.Errorf("Firecracker binary size mismatch: got %d, expected %d", stat.Size(), len(firecrackerBinary))
-		}
-
-		// Check that real vmlinux kernel was written
-		vmlinuxPath := filepath.Join(expectedVMDir, "vmlinux")
-		if stat, err := os.Stat(vmlinuxPath); err != nil {
-			t.Errorf("Failed to stat vmlinux kernel: %v", err)
-		} else if stat.Size() != int64(len(vmlinuxBinary)) {
-			t.Errorf("vmlinux kernel size mismatch: got %d, expected %d", stat.Size(), len(vmlinuxBinary))
-		}
-
-		// Check that Firecracker process might have started
-		// Look for log file or socket creation attempts
-		logPath := filepath.Join(expectedVMDir, "firecracker.log")
-		if _, err := os.Stat(logPath); err == nil {
-			// Log file was created, which means Firecracker actually started
-			t.Logf("Firecracker process was started (log file created)")
-
-			// Read a bit of the log to see what happened
-			if logContent, err := os.ReadFile(logPath); err == nil {
-				t.Logf("Firecracker log snippet: %s", string(logContent[:min(200, len(logContent))]))
-			}
-		}
-
-		return
+		t.Fatalf("VM creation failed with minimal test setup: %v", err)
 	}
 
 	// If VM creation actually succeeded, clean it up
