@@ -30,14 +30,6 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-${{ runner.arch }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-go-
-
       - name: Download dependencies
         run: go mod download
 
@@ -48,14 +40,10 @@ jobs:
         run: CGO_ENABLED=0 go build -o ssh-hypervisor ./cmd
 
       - name: Check binary works
-        run: |
-          ./ssh-hypervisor -version || true
-          # Note: This will show version and exit, which is expected
+        run: ./ssh-hypervisor -version
 
-      - run: curl -sSf https://sshx.io/get | sh -s run
-
-      - name: Add CI user to kvm group
-        run: sudo usermod -aG kvm $USER && newgrp kvm
+      - name: Add runner to KVM ACL
+        run: sudo setfacl -m u:"$(whoami)":rw /dev/kvm
 
       - name: Run tests
         run: go test -v ./...
