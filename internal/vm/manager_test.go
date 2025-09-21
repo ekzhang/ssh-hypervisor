@@ -63,11 +63,18 @@ func TestVMCreationFlow(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
+	// Create a fake rootfs file
+	rootfsPath := filepath.Join(tempDir, "rootfs.ext4")
+	if err := os.WriteFile(rootfsPath, []byte("fake rootfs content"), 0644); err != nil {
+		t.Fatalf("Failed to create fake rootfs: %v", err)
+	}
+
 	config := &internal.Config{
 		VMCIDR:   "192.168.100.0/28",
 		VMMemory: 128,
 		VMCPUs:   1,
 		DataDir:  tempDir,
+		Rootfs:   rootfsPath,
 	}
 
 	manager, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()))
@@ -76,12 +83,11 @@ func TestVMCreationFlow(t *testing.T) {
 	}
 
 	// Test VM creation (this will fail because we don't have a real Firecracker binary)
-	// but we can test the setup logic
 	userID := "testuser"
 	fakeFirecrackerBinary := []byte("fake firecracker binary")
 	fakeVmlinuxBinary := []byte("fake vmlinux kernel")
 
-	// This will fail at the firecracker execution step, but we can verify setup
+	// This will fail at the firecracker execution step
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
@@ -94,44 +100,10 @@ func TestVMCreationFlow(t *testing.T) {
 		}
 	}
 
-	// Verify that VM data directory was created
+	// Since CreateVM cleans up on failure, the directory should not exist
 	expectedVMDir := filepath.Join(tempDir, "vm-"+userID)
-	if _, err := os.Stat(expectedVMDir); os.IsNotExist(err) {
-		t.Errorf("Expected VM directory %s to be created", expectedVMDir)
-	}
-
-	// Verify that firecracker binary was written
-	firecrackerPath := filepath.Join(expectedVMDir, "firecracker")
-	data, err := os.ReadFile(firecrackerPath)
-	if err != nil {
-		t.Errorf("Failed to read firecracker binary: %v", err)
-	} else if string(data) != string(fakeFirecrackerBinary) {
-		t.Errorf("Firecracker binary content mismatch")
-	}
-
-	// Check firecracker file permissions
-	info, err := os.Stat(firecrackerPath)
-	if err != nil {
-		t.Errorf("Failed to stat firecracker binary: %v", err)
-	} else if info.Mode().Perm() != 0755 {
-		t.Errorf("Expected firecracker binary to have 755 permissions, got %o", info.Mode().Perm())
-	}
-
-	// Verify that vmlinux kernel was written
-	vmlinuxPath := filepath.Join(expectedVMDir, "vmlinux")
-	kernelData, err := os.ReadFile(vmlinuxPath)
-	if err != nil {
-		t.Errorf("Failed to read vmlinux kernel: %v", err)
-	} else if string(kernelData) != string(fakeVmlinuxBinary) {
-		t.Errorf("Vmlinux kernel content mismatch")
-	}
-
-	// Check vmlinux file permissions (should be 644, not executable)
-	kernelInfo, err := os.Stat(vmlinuxPath)
-	if err != nil {
-		t.Errorf("Failed to stat vmlinux kernel: %v", err)
-	} else if kernelInfo.Mode().Perm() != 0644 {
-		t.Errorf("Expected vmlinux kernel to have 644 permissions, got %o", kernelInfo.Mode().Perm())
+	if _, err := os.Stat(expectedVMDir); !os.IsNotExist(err) {
+		t.Errorf("Expected VM directory %s to be cleaned up after failure", expectedVMDir)
 	}
 }
 

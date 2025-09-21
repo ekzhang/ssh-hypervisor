@@ -130,6 +130,7 @@ func (m *Manager) CreateVM(ctx context.Context, userID string, firecrackerBinary
 	// Start the VM
 	if err := vm.Start(ctx, m); err != nil {
 		m.ipPool.Release(ip)
+		os.RemoveAll(vmDataDir)
 		return nil, fmt.Errorf("failed to start VM: %w", err)
 	}
 
@@ -169,7 +170,7 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 	vmlinuxPath := filepath.Join(vm.dataDir, "vmlinux")
 	firecrackerPath := filepath.Join(vm.dataDir, "firecracker")
 
-	bootArgs := "console=ttyS0 noapic reboot=k panic=1 pci=off nomodules random.trust_cpu=on"
+	bootArgs := "console=ttyS0 pci=off acpi=off noapic nomodules reboot=k panic=1 random.trust_cpu=on"
 	bootArgs += fmt.Sprintf(" ip=%s::%s:%s::eth0:off", vm.IP, vm.Gateway, vm.Netmask)
 
 	// Generate unique ID from VM IP for MAC and TAP device (only works for <65535 VMs)

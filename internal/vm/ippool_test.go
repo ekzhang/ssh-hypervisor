@@ -16,9 +16,9 @@ func TestNewIPPool(t *testing.T) {
 		t.Fatalf("Failed to create IP pool: %v", err)
 	}
 
-	// Should have 254 available IPs (256 - network - broadcast)
-	if pool.Available() != 254 {
-		t.Errorf("Expected 254 available IPs, got %d", pool.Available())
+	// Should have 253 available IPs (256 - network - broadcast - gateway)
+	if pool.Available() != 253 {
+		t.Errorf("Expected 253 available IPs, got %d", pool.Available())
 	}
 }
 
@@ -33,8 +33,8 @@ func TestIPPoolAllocation(t *testing.T) {
 		t.Fatalf("Failed to create IP pool: %v", err)
 	}
 
-	// Should have 14 available IPs (/28 = 16 - 2)
-	expectedAvailable := 14
+	// Should have 13 available IPs (/28 = 16 - network - broadcast - gateway)
+	expectedAvailable := 13
 	if pool.Available() != expectedAvailable {
 		t.Errorf("Expected %d available IPs, got %d", expectedAvailable, pool.Available())
 	}
@@ -91,24 +91,19 @@ func TestIPPoolExhaustion(t *testing.T) {
 		t.Fatalf("Failed to create IP pool: %v", err)
 	}
 
-	// /30 has only 2 usable IPs
-	expectedAvailable := 2
+	// /30 has only 1 usable IP (4 - network - broadcast - gateway)
+	expectedAvailable := 1
 	if pool.Available() != expectedAvailable {
 		t.Errorf("Expected %d available IPs, got %d", expectedAvailable, pool.Available())
 	}
 
-	// Allocate both IPs
+	// Allocate the only IP
 	ip1, err := pool.Allocate()
 	if err != nil {
 		t.Fatalf("Failed to allocate first IP: %v", err)
 	}
 
-	_, err = pool.Allocate()
-	if err != nil {
-		t.Fatalf("Failed to allocate second IP: %v", err)
-	}
-
-	// Try to allocate a third IP - should fail
+	// Try to allocate a second IP - should fail
 	_, err = pool.Allocate()
 	if err == nil {
 		t.Errorf("Expected error when allocating from exhausted pool")
