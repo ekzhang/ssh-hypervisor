@@ -19,7 +19,6 @@ import (
 // VM represents a single Firecracker microVM instance
 type VM struct {
 	ID         string
-	UserID     string
 	IP         net.IP
 	Gateway    net.IP
 	Netmask    net.IP
@@ -71,8 +70,17 @@ func NewManager(config *internal.Config, logger logrus.FieldLogger) (*Manager, e
 }
 
 // CreateVM creates and starts a new VM for the given user
-func (m *Manager) CreateVM(ctx context.Context, userID string, firecrackerBinary []byte, vmlinuxBinary []byte) (*VM, error) {
-	vmID := generateVMID(userID)
+func (m *Manager) CreateVM(ctx context.Context, vmID string, firecrackerBinary []byte, vmlinuxBinary []byte) (*VM, error) {
+	// Validate VM ID, should be alphanumeric with - and _, not empty, and at most 48 chars
+	if vmID == "" {
+		return nil, fmt.Errorf("VM ID cannot be empty")
+	}
+	if strings.Trim(vmID, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_") != "" {
+		return nil, fmt.Errorf("invalid VM ID: %s", vmID)
+	}
+	if len(vmID) > 48 {
+		return nil, fmt.Errorf("VM ID too long: %s", vmID)
+	}
 
 	// Allocate IP address
 	ip, err := m.ipPool.Allocate()
@@ -89,7 +97,6 @@ func (m *Manager) CreateVM(ctx context.Context, userID string, firecrackerBinary
 
 	vm := &VM{
 		ID:         vmID,
-		UserID:     userID,
 		IP:         ip,
 		Gateway:    m.ipPool.Gateway(),
 		Netmask:    m.ipPool.Netmask(),
@@ -139,8 +146,7 @@ func (m *Manager) CreateVM(ctx context.Context, userID string, firecrackerBinary
 }
 
 // GetVM returns the VM for a given user ID
-func (m *Manager) GetVM(userID string) (*VM, bool) {
-	vmID := generateVMID(userID)
+func (m *Manager) GetVM(vmID string) (*VM, bool) {
 	vm, exists := m.vms[vmID]
 	return vm, exists
 }
@@ -170,8 +176,10 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 	vmlinuxPath := filepath.Join(vm.dataDir, "vmlinux")
 	firecrackerPath := filepath.Join(vm.dataDir, "firecracker")
 
-	bootArgs := "console=ttyS0 pci=off acpi=off noapic nomodules reboot=k panic=1 random.trust_cpu=on"
-	bootArgs += fmt.Sprintf(" ip=%s::%s:%s::eth0:off", vm.IP, vm.Gateway, vm.Netmask)
+	bootArgs := "console=ttyS0 pci=off acpi=off noapic reboot=k panic=1 random.trust_cpu=on init=/sbin/init-sshvm"
+
+	// ip=IP::Gateway:Netmask:Hostname:Interface:off
+	bootArgs += fmt.Sprintf(" ip=%s::%s:%s:%s:eth0:off", vm.IP, vm.Gateway, vm.Netmask, vm.ID)
 
 	// Generate unique ID from VM IP for MAC and TAP device (only works for <65535 VMs)
 	vmNetID := int(vm.IP[len(vm.IP)-2])*256 + int(vm.IP[len(vm.IP)-1])
@@ -219,14 +227,28 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 		Setpgid: true,
 	}
 
+	vm.logger.Infof("Starting VM with IP %s, data dir %s", vm.IP, vm.dataDir)
+
+	// Create a named pipe for VM serial input
+	pipePath := filepath.Join(vm.dataDir, "console.in")
+	if err := syscall.Mkfifo(pipePath, 0600); err != nil {
+		return fmt.Errorf("mkfifo for console.in: %w", err)
+	}
+	pipeFile, err := os.OpenFile(pipePath, os.O_RDWR, os.ModeNamedPipe)
+	if err != nil {
+		return fmt.Errorf("open pipe for console.in: %v", err)
+	}
+	defer pipeFile.Close()
+
 	// Capture VM console output (boot logs, OpenRC, SSH, etc.)
-	logPath := filepath.Join(vm.dataDir, "console.log")
+	logPath := filepath.Join(vm.dataDir, "console.out")
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create log file: %w", err)
 	}
 	defer logFile.Close()
 
+	cmd.Stdin = pipeFile
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 
@@ -277,11 +299,6 @@ func (vm *VM) Stop() error {
 	}
 
 	return nil
-}
-
-// generateVMID generates a VM ID based on user ID
-func generateVMID(userID string) string {
-	return fmt.Sprintf("vm-%s", userID)
 }
 
 // setupNetworkBridge creates and configures the network bridge

@@ -83,7 +83,7 @@ func TestVMCreationFlow(t *testing.T) {
 	}
 
 	// Test VM creation (this will fail because we don't have a real Firecracker binary)
-	userID := "testuser"
+	vmID := "testuser"
 	fakeFirecrackerBinary := []byte("fake firecracker binary")
 	fakeVmlinuxBinary := []byte("fake vmlinux kernel")
 
@@ -91,7 +91,7 @@ func TestVMCreationFlow(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	vm, err := manager.CreateVM(ctx, userID, fakeFirecrackerBinary, fakeVmlinuxBinary)
+	vm, err := manager.CreateVM(ctx, vmID, fakeFirecrackerBinary, fakeVmlinuxBinary)
 	// We expect this to fail since we're using a fake binary
 	if err == nil {
 		t.Errorf("Expected error with fake firecracker binary")
@@ -101,28 +101,9 @@ func TestVMCreationFlow(t *testing.T) {
 	}
 
 	// Since CreateVM cleans up on failure, the directory should not exist
-	expectedVMDir := filepath.Join(tempDir, "vm-"+userID)
+	expectedVMDir := filepath.Join(tempDir, "vm-"+vmID)
 	if _, err := os.Stat(expectedVMDir); !os.IsNotExist(err) {
 		t.Errorf("Expected VM directory %s to be cleaned up after failure", expectedVMDir)
-	}
-}
-
-func TestVMIDGeneration(t *testing.T) {
-	testCases := []struct {
-		userID   string
-		expected string
-	}{
-		{"alice", "vm-alice"},
-		{"bob", "vm-bob"},
-		{"user-123", "vm-user-123"},
-		{"", "vm-"},
-	}
-
-	for _, tc := range testCases {
-		result := generateVMID(tc.userID)
-		if result != tc.expected {
-			t.Errorf("generateVMID(%s) = %s, expected %s", tc.userID, result, tc.expected)
-		}
 	}
 }
 
@@ -145,10 +126,10 @@ func TestGetVM(t *testing.T) {
 		t.Fatalf("Failed to create VM manager: %v", err)
 	}
 
-	userID := "testuser"
+	vmID := "testuser"
 
 	// Test getting non-existent VM
-	vm, exists := manager.GetVM(userID)
+	vm, exists := manager.GetVM(vmID)
 	if exists {
 		t.Errorf("Expected VM not to exist")
 	}
@@ -157,15 +138,13 @@ func TestGetVM(t *testing.T) {
 	}
 
 	// Add a VM manually to test retrieval
-	vmID := generateVMID(userID)
 	testVM := &VM{
-		ID:     vmID,
-		UserID: userID,
+		ID: vmID,
 	}
 	manager.vms[vmID] = testVM
 
 	// Test getting existing VM
-	vm, exists = manager.GetVM(userID)
+	vm, exists = manager.GetVM(vmID)
 	if !exists {
 		t.Errorf("Expected VM to exist")
 	}

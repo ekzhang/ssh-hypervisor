@@ -47,3 +47,12 @@ To run tests, just use `go test` directly.
 ```bash
 go test -v -exec sudo ./...
 ```
+
+Then, you will need to build a rootfs once, and run the server:
+
+```bash
+# Build a rootfs, requires docker. Produces 'rootfs.ext4' file.
+scripts/create-rootfs.sh
+
+./ssh-hypervisor -rootfs rootfs.ext4
+```

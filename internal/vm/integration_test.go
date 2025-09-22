@@ -56,13 +56,13 @@ func TestVMIntegrationWithRealBinaries(t *testing.T) {
 		t.Fatalf("Failed to create VM manager: %v", err)
 	}
 
-	userID := "integration-test-user"
+	vmID := "integration-test-user"
 
 	// Test VM creation with real binaries
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	vm, err := manager.CreateVM(ctx, userID, firecrackerBinary, vmlinuxBinary)
+	vm, err := manager.CreateVM(ctx, vmID, firecrackerBinary, vmlinuxBinary)
 	if err != nil {
 		t.Fatalf("VM creation failed with minimal test setup: %v", err)
 	}
@@ -72,8 +72,8 @@ func TestVMIntegrationWithRealBinaries(t *testing.T) {
 		t.Logf("VM creation succeeded! VM ID: %s, IP: %s", vm.ID, vm.IP.String())
 
 		// Verify VM properties
-		if vm.ID != "vm-"+userID {
-			t.Errorf("Unexpected VM ID: got %s, expected %s", vm.ID, "vm-"+userID)
+		if vm.ID != vmID {
+			t.Errorf("Unexpected VM ID: got %s, expected %s", vm.ID, vmID)
 		}
 
 		if vm.IP == nil {
