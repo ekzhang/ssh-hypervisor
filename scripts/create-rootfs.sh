@@ -24,7 +24,7 @@ docker run -i --rm \
 set -euo pipefail
 
 apk add --no-cache openrc
-apk add --no-cache util-linux openssh
+apk add --no-cache util-linux openssh bash
 
 # Set up a login terminal on the serial console (ttyS0):
 ln -s agetty /etc/init.d/agetty.ttyS0
@@ -39,6 +39,9 @@ rc-update add localmount boot
 echo "devpts  /dev/pts  devpts  defaults,gid=5,mode=620,ptmxmode=666  0  0" >> /etc/fstab
 
 rc-update add sshd default
+
+# Change shell to bash
+sed -i 's|/bin/sh|/bin/bash|' /etc/passwd
 
 # Remove the message of the day
 rm /etc/motd

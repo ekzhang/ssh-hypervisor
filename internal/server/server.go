@@ -297,7 +297,7 @@ func (s *Server) showWelcomeMessage(sess ssh.Session, user string, isNewVM bool)
 	} else {
 		userStat, _ := s.userStats.GetUserStat(user)
 		lastLogin := formatRelativeTime(userStat.LastConnected)
-		wish.Println(sess, fmt.Sprintf("Today is \033[3m%s\033[0m. Your last login was %s.", dayOfWeek, lastLogin))
+		wish.Println(sess, fmt.Sprintf("Today is \033[3m%s\033[0m. Your last login was \033[3m%s\033[0m.", dayOfWeek, lastLogin))
 	}
 
 	wish.Println(sess, "")
