@@ -51,7 +51,7 @@ echo "[*] Building ${KERNEL_TARGET} for ${KERNEL_ARCH} (this can take a while)â€
 make -j"${JOBS}" "${KERNEL_TARGET}"
 
 echo "[*] Collecting artifacts in ${OUTDIR}"
-cp -v "${KERNEL_OUTPUT}" "${OUTDIR}/${KERNEL_TARGET}-$(make -s kernelrelease)"
+cp -v "${KERNEL_OUTPUT}" "${OUTDIR}/vmlinux-$(make -s kernelrelease)"
 cp -v .config "${OUTDIR}/config-$(make -s kernelrelease)"
 cp -v System.map "${OUTDIR}/System.map-$(make -s kernelrelease)"
 
@@ -60,7 +60,7 @@ cat <<EOF
 âœ… Done!
 
 Artifacts:
-  ${OUTDIR}/${KERNEL_TARGET}-$(make -s kernelrelease)
+  ${OUTDIR}/vmlinux-$(make -s kernelrelease)
   ${OUTDIR}/config-$(make -s kernelrelease)
 
 EOF

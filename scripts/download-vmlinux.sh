@@ -31,7 +31,6 @@ case $ARCH in
     KERNEL_URL="https://s3.amazonaws.com/ssh-hypervisor/kernels/x86_64/vmlinux-6.1.150"
     ;;
   aarch64)
-    # TODO: This is not built yet
     KERNEL_URL="https://s3.amazonaws.com/ssh-hypervisor/kernels/aarch64/vmlinux-6.1.150"
     ;;
   *)
