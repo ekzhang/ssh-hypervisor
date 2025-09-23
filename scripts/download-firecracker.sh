@@ -1,4 +1,6 @@
 #!/bin/bash
+# Run this script with: go generate ./...
+
 set -euo pipefail
 
 FIRECRACKER_VERSION="v1.13.1"
