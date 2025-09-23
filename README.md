@@ -5,7 +5,7 @@ _Like SimCity, but for virtual machines!_
 `ssh-hypervisor` is an SSH server that dynamically provisions Linux microVMs with [Firecracker](https://github.com/firecracker-microvm/firecracker). Once set up, you can just SSH into it from anywhere to instantly allocate a fresh VM.
 
 ```bash
-# Dynamically create a VM, or restore past state from snapshot.
+# Dynamically create a microVM, or restore from past state.
 ssh yourname@vmcity.ekzhang.com
 
 $ whoami  # You are now SSH'd into the VM!
@@ -25,7 +25,7 @@ System requirements:
 - [KVM](https://linux-kvm.org/page/Main_Page) – check `stat /dev/kvm`
 - [iproute2](https://en.wikipedia.org/wiki/Iproute2) – the `ip` command
 
-Idle VMs are automatically suspended with a [snapshot](https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/snapshot-support.md) that is stored on disk. If the same user logs in within a time period, they receive a snapshot of the previous VM state that gets resumed.
+<!-- Idle VMs are automatically suspended with a [snapshot](https://github.com/firecracker-microvm/firecracker/blob/main/docs/snapshotting/snapshot-support.md) that is stored on disk. If the same user logs in within a time period, they receive a snapshot of the previous VM state that gets resumed. -->
 
 ## Development
 
