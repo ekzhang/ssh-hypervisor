@@ -58,7 +58,7 @@ func main() {
 		log.Fatalf("Configuration error: %v", err)
 	}
 
-	manager, err := vm.NewManager(config, log)
+	manager, err := vm.NewManager(config, log, vm.GetFirecrackerBinary(), vm.GetVmlinuxBinary())
 	if err != nil {
 		log.Fatalf("Failed to create VM manager: %v", err)
 	}
@@ -70,7 +70,7 @@ func main() {
 	log.Printf("VM network: %s", config.VMCIDR)
 	log.Printf("Data directory: %s", config.DataDir)
 
-	testVM, err := manager.CreateVM(ctx, "test-user", vm.GetFirecrackerBinary(), vm.GetVmlinuxBinary())
+	testVM, err := manager.GetOrCreateVM(ctx, "test-user")
 	if err != nil {
 		log.Fatalf("Failed to create VM: %v", err)
 	}

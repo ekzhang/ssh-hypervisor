@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/ekzhang/ssh-hypervisor/internal"
@@ -34,15 +35,19 @@ type VM struct {
 
 // Manager manages the lifecycle of Firecracker VMs
 type Manager struct {
-	config     *internal.Config
-	vms        map[string]*VM
+	config *internal.Config
+
+	mutex  sync.RWMutex // Protects vms and vmRefs maps
+	vms    map[string]*VM
+	vmRefs map[string]int // Reference count for each VM
+
 	ipPool     *IPPool
 	bridgeName string
 	logger     logrus.FieldLogger
 }
 
 // NewManager creates a new VM manager
-func NewManager(config *internal.Config, logger logrus.FieldLogger) (*Manager, error) {
+func NewManager(config *internal.Config, logger logrus.FieldLogger, firecrackerBinary []byte, vmlinuxBinary []byte) (*Manager, error) {
 	ipNet, err := config.GetVMIPRange()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse VM IP range: %w", err)
@@ -58,9 +63,26 @@ func NewManager(config *internal.Config, logger logrus.FieldLogger) (*Manager, e
 	manager := &Manager{
 		config:     config,
 		vms:        make(map[string]*VM),
+		vmRefs:     make(map[string]int),
 		ipPool:     ipPool,
 		bridgeName: bridgeName,
 		logger:     logger,
+	}
+
+	// Write Firecracker binary to main data directory (shared across VMs)
+	firecrackerPath := filepath.Join(config.DataDir, "firecracker")
+	if _, err := os.Stat(firecrackerPath); os.IsNotExist(err) {
+		if err := os.WriteFile(firecrackerPath, firecrackerBinary, 0755); err != nil {
+			return nil, fmt.Errorf("failed to write firecracker binary: %w", err)
+		}
+	}
+
+	// Write vmlinux kernel to main data directory (shared across VMs)
+	vmlinuxPath := filepath.Join(config.DataDir, "vmlinux")
+	if _, err := os.Stat(vmlinuxPath); os.IsNotExist(err) {
+		if err := os.WriteFile(vmlinuxPath, vmlinuxBinary, 0644); err != nil {
+			return nil, fmt.Errorf("failed to write vmlinux kernel: %w", err)
+		}
 	}
 
 	// Set up network bridge
@@ -71,8 +93,39 @@ func NewManager(config *internal.Config, logger logrus.FieldLogger) (*Manager, e
 	return manager, nil
 }
 
-// CreateVM creates and starts a new VM for the given user
-func (m *Manager) CreateVM(ctx context.Context, vmID string, firecrackerBinary []byte, vmlinuxBinary []byte) (*VM, error) {
+// GetOrCreateVM gets an existing VM or creates a new one if it doesn't exist
+func (m *Manager) GetOrCreateVM(ctx context.Context, vmID string) (*VM, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	// Check if VM already exists and increment reference count
+	if existingVM, exists := m.vms[vmID]; exists {
+		m.vmRefs[vmID]++
+		m.logger.Printf("Using existing VM %s (ref count: %d)", vmID, m.vmRefs[vmID])
+		return existingVM, nil
+	}
+
+	// Check VM limit before creating new VM (0 = unlimited)
+	if m.config.MaxConcurrentVMs > 0 && len(m.vms) >= m.config.MaxConcurrentVMs {
+		return nil, fmt.Errorf("maximum number of concurrent VMs (%d) reached", m.config.MaxConcurrentVMs)
+	}
+
+	// Create new VM
+	vm, err := m.createVMInternal(ctx, vmID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add to maps and set initial reference count
+	m.vms[vmID] = vm
+	m.vmRefs[vmID] = 1
+	m.logger.Printf("Created new VM %s (ref count: 1)", vmID)
+
+	return vm, nil
+}
+
+// createVMInternal creates and starts a new VM (internal method, assumes mutex is held)
+func (m *Manager) createVMInternal(ctx context.Context, vmID string) (*VM, error) {
 	// Validate VM ID, should be alphanumeric with - and _, not empty, and at most 48 chars
 	if vmID == "" {
 		return nil, fmt.Errorf("VM ID cannot be empty")
@@ -109,22 +162,6 @@ func (m *Manager) CreateVM(ctx context.Context, vmID string, firecrackerBinary [
 		logger:     m.logger.WithField("vm_id", vmID),
 	}
 
-	// Write Firecracker binary to disk
-	firecrackerPath := filepath.Join(vmDataDir, "firecracker")
-	if err := os.WriteFile(firecrackerPath, firecrackerBinary, 0755); err != nil {
-		m.ipPool.Release(ip)
-		os.RemoveAll(vmDataDir)
-		return nil, fmt.Errorf("failed to write firecracker binary: %w", err)
-	}
-
-	// Write vmlinux kernel to disk
-	vmlinuxPath := filepath.Join(vmDataDir, "vmlinux")
-	if err := os.WriteFile(vmlinuxPath, vmlinuxBinary, 0644); err != nil {
-		m.ipPool.Release(ip)
-		os.RemoveAll(vmDataDir)
-		return nil, fmt.Errorf("failed to write vmlinux kernel: %w", err)
-	}
-
 	// Copy the rootfs image to the VM data directory (writable)
 	buf, err := os.ReadFile(vm.config.Rootfs)
 	if err == nil {
@@ -143,22 +180,67 @@ func (m *Manager) CreateVM(ctx context.Context, vmID string, firecrackerBinary [
 		return nil, fmt.Errorf("failed to start VM: %w", err)
 	}
 
-	m.vms[vmID] = vm
 	return vm, nil
 }
 
 // GetVM returns the VM for a given user ID
 func (m *Manager) GetVM(vmID string) (*VM, bool) {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 	vm, exists := m.vms[vmID]
 	return vm, exists
 }
 
-// DestroyVM stops and removes a VM
-func (m *Manager) DestroyVM(vmID string) error {
+// GetActiveVMCount returns the current number of active VMs
+func (m *Manager) GetActiveVMCount() int {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return len(m.vms)
+}
+
+// ReleaseVM decrements the reference count for a VM and destroys it if no more references
+func (m *Manager) ReleaseVM(vmID string) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	vm, exists := m.vms[vmID]
 	if !exists {
 		return fmt.Errorf("VM %s not found", vmID)
 	}
+
+	// Decrement reference count
+	m.vmRefs[vmID]--
+	refCount := m.vmRefs[vmID]
+
+	m.logger.Printf("Released VM %s (ref count: %d)", vmID, refCount)
+
+	// Only destroy VM if no more references
+	if refCount <= 0 {
+		m.logger.Printf("Destroying VM %s (no more references)", vmID)
+
+		if err := vm.Stop(); err != nil {
+			return fmt.Errorf("failed to stop VM: %w", err)
+		}
+
+		m.ipPool.Release(vm.IP)
+		delete(m.vms, vmID)
+		delete(m.vmRefs, vmID)
+	}
+
+	return nil
+}
+
+// DestroyVM forcibly stops and removes a VM (for backward compatibility)
+func (m *Manager) DestroyVM(vmID string) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	vm, exists := m.vms[vmID]
+	if !exists {
+		return fmt.Errorf("VM %s not found", vmID)
+	}
+
+	m.logger.Printf("Forcibly destroying VM %s", vmID)
 
 	if err := vm.Stop(); err != nil {
 		return fmt.Errorf("failed to stop VM: %w", err)
@@ -166,6 +248,7 @@ func (m *Manager) DestroyVM(vmID string) error {
 
 	m.ipPool.Release(vm.IP)
 	delete(m.vms, vmID)
+	delete(m.vmRefs, vmID)
 
 	return nil
 }
@@ -175,10 +258,10 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 	// Remove existing socket
 	os.Remove(vm.SocketPath)
 
-	vmlinuxPath := filepath.Join(vm.dataDir, "vmlinux")
-	firecrackerPath := filepath.Join(vm.dataDir, "firecracker")
+	vmlinuxPath := filepath.Join(vm.config.DataDir, "vmlinux")
+	firecrackerPath := filepath.Join(vm.config.DataDir, "firecracker")
 
-	bootArgs := "console=ttyS0 reboot=k panic=1 random.trust_cpu=on"
+	bootArgs := "console=ttyS0 reboot=k panic=1 random.trust_cpu=on nomodules"
 
 	// ip=IP::Gateway:Netmask:Hostname:Interface:off
 	bootArgs += fmt.Sprintf(" ip=%s::%s:%s:%s:eth0:off", vm.IP, vm.Gateway, vm.Netmask, vm.ID)
@@ -229,10 +312,12 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 		Setpgid: true,
 	}
 
-	vm.logger.Infof("Starting VM with IP %s, data dir %s", vm.IP, vm.dataDir)
+	vm.logger.Infof("Starting VM with IP %s, TAP device %s, data dir %s", vm.IP, tapName, vm.dataDir)
 
 	// Create a named pipe for VM serial input
 	pipePath := filepath.Join(vm.dataDir, "console.in")
+	// Remove existing pipe if it exists
+	os.Remove(pipePath)
 	if err := syscall.Mkfifo(pipePath, 0600); err != nil {
 		return fmt.Errorf("mkfifo for console.in: %w", err)
 	}
@@ -244,7 +329,7 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 
 	// Capture VM console output (boot logs, OpenRC, SSH, etc.)
 	logPath := filepath.Join(vm.dataDir, "console.out")
-	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create log file: %w", err)
 	}
@@ -321,7 +406,12 @@ func (vm *VM) Stop() error {
 
 		vm.machine.StopVMM()
 		vm.machine.Wait(ctx)
-		os.RemoveAll(vm.dataDir)
+
+		// Clean up only VM-specific files, preserve data directory and shared binaries
+		os.Remove(vm.SocketPath)                            // firecracker.sock
+		os.Remove(vm.PIDFile)                               // firecracker.pid
+		os.Remove(filepath.Join(vm.dataDir, "console.in"))  // console.in
+		os.Remove(filepath.Join(vm.dataDir, "console.out")) // console.out
 
 		if err != nil {
 			return fmt.Errorf("failed to shutdown machine: %w", err)

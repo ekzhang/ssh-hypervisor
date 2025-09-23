@@ -12,14 +12,21 @@ import (
 )
 
 func TestNewManager(t *testing.T) {
+	// Create temporary directory for test
+	tempDir, err := os.MkdirTemp("", "ssh-hypervisor-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
 	config := &internal.Config{
 		VMCIDR:   "192.168.100.0/24",
 		VMMemory: 128,
 		VMCPUs:   1,
-		DataDir:  "/tmp/ssh-hypervisor-test",
+		DataDir:  tempDir,
 	}
 
-	manager, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()))
+	manager, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()), []byte("fake firecracker"), []byte("fake vmlinux"))
 	if err != nil {
 		t.Fatalf("Failed to create VM manager: %v", err)
 	}
@@ -49,7 +56,7 @@ func TestManagerInvalidCIDR(t *testing.T) {
 		DataDir:  "/tmp/ssh-hypervisor-test",
 	}
 
-	_, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()))
+	_, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()), []byte("fake firecracker"), []byte("fake vmlinux"))
 	if err == nil {
 		t.Errorf("Expected error with invalid CIDR")
 	}
@@ -77,21 +84,19 @@ func TestVMCreationFlow(t *testing.T) {
 		Rootfs:   rootfsPath,
 	}
 
-	manager, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()))
+	manager, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()), []byte("fake firecracker"), []byte("fake vmlinux"))
 	if err != nil {
 		t.Fatalf("Failed to create VM manager: %v", err)
 	}
 
 	// Test VM creation (this will fail because we don't have a real Firecracker binary)
 	vmID := "testuser"
-	fakeFirecrackerBinary := []byte("fake firecracker binary")
-	fakeVmlinuxBinary := []byte("fake vmlinux kernel")
 
 	// This will fail at the firecracker execution step
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	vm, err := manager.CreateVM(ctx, vmID, fakeFirecrackerBinary, fakeVmlinuxBinary)
+	vm, err := manager.GetOrCreateVM(ctx, vmID)
 	// We expect this to fail since we're using a fake binary
 	if err == nil {
 		t.Errorf("Expected error with fake firecracker binary")
@@ -121,7 +126,7 @@ func TestGetVM(t *testing.T) {
 		DataDir:  tempDir,
 	}
 
-	manager, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()))
+	manager, err := NewManager(config, logrus.NewEntry(logrus.StandardLogger()), []byte("fake firecracker"), []byte("fake vmlinux"))
 	if err != nil {
 		t.Fatalf("Failed to create VM manager: %v", err)
 	}

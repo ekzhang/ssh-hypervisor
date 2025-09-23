@@ -9,13 +9,14 @@ import (
 
 // Config holds all configuration options for the ssh-hypervisor
 type Config struct {
-	Port     int    // SSH server port
-	HostKey  string // Path to SSH host key
-	VMCIDR   string // CIDR block for VM IP addresses
-	VMMemory int    // VM memory in MB
-	VMCPUs   int    // Number of VM CPUs
-	DataDir  string // Directory for VM snapshots and data
-	Rootfs   string // Path to rootfs image
+	Port              int    // SSH server port
+	HostKey           string // Path to SSH host key
+	VMCIDR            string // CIDR block for VM IP addresses
+	VMMemory          int    // VM memory in MB
+	VMCPUs            int    // Number of VM CPUs
+	MaxConcurrentVMs  int    // Maximum number of concurrent VMs (0 = unlimited)
+	DataDir           string // Directory for VM snapshots and data
+	Rootfs            string // Path to rootfs image
 }
 
 // Validate checks if the configuration is valid
@@ -43,6 +44,9 @@ func (c *Config) Validate() error {
 	}
 	if c.VMCPUs < 1 {
 		return fmt.Errorf("VM must have at least 1 CPU")
+	}
+	if c.MaxConcurrentVMs < 0 {
+		return fmt.Errorf("max concurrent VMs cannot be negative (use 0 for unlimited)")
 	}
 
 	// Ensure data directory exists
