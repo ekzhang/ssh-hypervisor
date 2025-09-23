@@ -211,7 +211,6 @@ func (s *Server) sshHandler(sess ssh.Session) {
 	remoteAddr := sess.RemoteAddr()
 
 	s.logger.Printf("SSH connection from %s (user: %s)", remoteAddr, user)
-	s.userStats.RecordConnection(user)
 
 	// Show animated progress bar while creating VM
 	ctx, cancel := context.WithCancel(sess.Context())
@@ -291,6 +290,7 @@ func (s *Server) sshHandler(sess ssh.Session) {
 	}()
 
 	s.logger.Printf("Created VM %s for user %s (IP: %s)", testVM.ID, user, testVM.IP)
+	s.userStats.RecordConnection(user)
 
 	// Clear progress line and show success
 	wish.Print(sess, "\r\033[2K")
@@ -316,11 +316,10 @@ func (s *Server) showWelcomeMessage(sess ssh.Session, user string, isNewVM bool)
 	wish.Println(sess, "")
 
 	// Check if this is the user's first time
-	isFirstTime := s.userStats.IsFirstTime(user)
-	if isFirstTime {
+	userStat, exists := s.userStats.GetUserStat(user)
+	if !exists {
 		wish.Println(sess, fmt.Sprintf("Today is \033[3m%s\033[0m. It's your first time here.", dayOfWeek))
 	} else {
-		userStat, _ := s.userStats.GetUserStat(user)
 		lastLogin := formatRelativeTime(userStat.LastConnected)
 		wish.Println(sess, fmt.Sprintf("Today is \033[3m%s\033[0m. Your last login was \033[3m%s\033[0m.", dayOfWeek, lastLogin))
 	}

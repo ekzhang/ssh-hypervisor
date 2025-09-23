@@ -112,16 +112,7 @@ func (us *UserStats) GetUserStat(username string) (*UserStat, bool) {
 	defer us.mu.Unlock()
 
 	user, exists := us.users[username]
-	if !exists {
-		return nil, false
-	}
-
-	// Return a copy to avoid external modification
-	return &UserStat{
-		Username:      user.Username,
-		ConnectCount:  user.ConnectCount,
-		LastConnected: user.LastConnected,
-	}, true
+	return user, exists
 }
 
 // GetRecentUsers returns the most recent users (excluding the current user)
@@ -150,13 +141,4 @@ func (us *UserStats) GetRecentUsers(excludeUser string, limit int) []*UserStat {
 	}
 
 	return users
-}
-
-// IsFirstTime returns true if this is the user's first connection
-func (us *UserStats) IsFirstTime(username string) bool {
-	us.mu.Lock()
-	defer us.mu.Unlock()
-
-	user, exists := us.users[username]
-	return !exists || user.ConnectCount == 0
 }
