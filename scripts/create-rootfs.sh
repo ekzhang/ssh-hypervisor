@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-dd if=/dev/zero of=rootfs.ext4 bs=1M count=50  # 50 MB disk image
+dd if=/dev/zero of=rootfs.ext4 bs=1M count=512  # 512 MB disk image
 mkfs.ext4 rootfs.ext4
 rootfs_dir="$(mktemp -d -p "$PWD" rootfs.XXXX)"
 chmod 755 "$rootfs_dir"
@@ -25,6 +25,9 @@ set -euo pipefail
 
 apk add --no-cache openrc
 apk add --no-cache util-linux openssh bash
+
+# Add interesting packages for user convenience:
+apk add --no-cache vim htop curl wget iproute2 net-tools python3 nodejs npm
 
 # Set up a login terminal on the serial console (ttyS0):
 ln -s agetty /etc/init.d/agetty.ttyS0

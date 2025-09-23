@@ -466,8 +466,11 @@ func (m *Manager) setupNetworkBridge() error {
 func (m *Manager) setupTAPDevice(tapName string) error {
 	// Check if TAP device already exists
 	if err := exec.Command("ip", "link", "show", tapName).Run(); err == nil {
-		m.logger.Debugf("TAP device %s already exists", tapName)
-		return nil
+		// If TAP device exists, delete it
+		m.logger.Debugf("TAP device %s already exists, deleting it", tapName)
+		if err := exec.Command("ip", "link", "delete", tapName).Run(); err != nil {
+			return fmt.Errorf("failed to delete existing TAP device %s: %w", tapName, err)
+		}
 	}
 
 	// Create TAP device
