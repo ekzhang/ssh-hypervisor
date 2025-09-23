@@ -84,6 +84,11 @@ func (s *Server) Run(ctx context.Context) error {
 
 	s.logger.Printf("Starting SSH server on port %d", s.config.Port)
 
+	// Start periodic user stats saving
+	statsCtx, statsCancel := context.WithCancel(ctx)
+	defer statsCancel()
+	go s.periodicStatsSave(statsCtx)
+
 	// Start server in goroutine
 	done := make(chan error, 1)
 	go func() {
@@ -119,6 +124,25 @@ func (s *Server) Run(ctx context.Context) error {
 			return fmt.Errorf("SSH server error: %w", err)
 		}
 		return nil
+	}
+}
+
+// periodicStatsSave saves user stats to disk every 30 seconds
+func (s *Server) periodicStatsSave(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	s.logger.Printf("Started periodic user stats saving (every 30 seconds)")
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := s.userStats.Save(); err != nil {
+				s.logger.Errorf("Failed to save user stats during periodic save: %v", err)
+			}
+		}
 	}
 }
 
