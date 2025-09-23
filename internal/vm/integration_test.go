@@ -22,12 +22,12 @@ func TestVMIntegrationWithRealBinaries(t *testing.T) {
 	// Load real binaries
 	firecrackerBinary, err := os.ReadFile("binaries/firecracker")
 	if err != nil {
-		t.Skip("Skipping integration test: firecracker binary not found. Run 'go generate ./cmd/' first")
+		t.Skip("Skipping integration test: firecracker binary not found. Run 'go generate' first")
 	}
 
 	vmlinuxBinary, err := os.ReadFile("binaries/vmlinux")
 	if err != nil {
-		t.Skip("Skipping integration test: vmlinux binary not found. Run 'go generate ./cmd/' first")
+		t.Skip("Skipping integration test: vmlinux binary not found. Run 'go generate' first")
 	}
 
 	// Create temporary directory for test
@@ -92,7 +92,7 @@ func TestFirecrackerBinaryVerification(t *testing.T) {
 	// Load real firecracker binary
 	firecrackerBinary, err := os.ReadFile("binaries/firecracker")
 	if err != nil {
-		t.Skip("Skipping binary verification test: firecracker binary not found. Run 'go generate ./cmd/' first")
+		t.Skip("Skipping binary verification test: firecracker binary not found. Run 'go generate' first")
 	}
 
 	if len(firecrackerBinary) == 0 {
@@ -111,7 +111,7 @@ func TestVmlinuxBinaryVerification(t *testing.T) {
 	// Load real vmlinux binary
 	vmlinuxBinary, err := os.ReadFile("binaries/vmlinux")
 	if err != nil {
-		t.Skip("Skipping binary verification test: vmlinux binary not found. Run 'go generate ./cmd/' first")
+		t.Skip("Skipping binary verification test: vmlinux binary not found. Run 'go generate' first")
 	}
 
 	if len(vmlinuxBinary) == 0 {

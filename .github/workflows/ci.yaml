@@ -37,7 +37,7 @@ jobs:
         run: go generate ./...
 
       - name: Build
-        run: CGO_ENABLED=0 go build -o ssh-hypervisor ./cmd
+        run: CGO_ENABLED=0 go build ./cmd/ssh-hypervisor
 
       - name: Check binary works
         run: ./ssh-hypervisor -version

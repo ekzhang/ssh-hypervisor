@@ -36,7 +36,7 @@ To build the project:
 go generate ./...
 
 # Build the binary (static linking, no CGO dependencies)
-CGO_ENABLED=0 go build -o ssh-hypervisor ./cmd
+CGO_ENABLED=0 go build ./cmd/ssh-hypervisor
 
 # Grant required CAP_NET_ADMIN to the binary
 sudo setcap cap_net_admin+ep ./ssh-hypervisor

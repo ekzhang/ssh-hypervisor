@@ -3,6 +3,7 @@ binaries/
 
 # Compiled binary outputs
 /ssh-hypervisor
+/vm-start
 /rootfs.ext4
 
 # Data directory
