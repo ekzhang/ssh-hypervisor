@@ -33,10 +33,12 @@ type VM struct {
 	Netmask    net.IP
 	SocketPath string
 	PIDFile    string
-	machine    *firecracker.Machine
 	config     *internal.Config
 	dataDir    string
 	logger     *logrus.Entry
+
+	mutex   sync.Mutex // Protects machine after Start()
+	machine *firecracker.Machine
 }
 
 // Manager manages the lifecycle of Firecracker VMs
@@ -247,7 +249,7 @@ func (m *Manager) ReleaseVM(vmID string) error {
 	return nil
 }
 
-// DestroyVM forcibly stops and removes a VM (for backward compatibility)
+// DestroyVM forcibly stops and removes a VM
 func (m *Manager) DestroyVM(vmID string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -394,29 +396,43 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 		},
 	})
 
-	vm.machine = machine
-
 	// Start the machine
 	if err := machine.Start(ctx); err != nil {
+		os.Remove(vm.SocketPath)
+		os.Remove(vm.PIDFile)
+		os.Remove(filepath.Join(vm.dataDir, "console.in"))
 		return fmt.Errorf("failed to start machine: %w", err)
 	}
 
 	// Write PID file
 	pid, err := machine.PID()
-	if err != nil {
-		machine.Shutdown(ctx)
-		return fmt.Errorf("failed to get PID: %w", err)
+	if err == nil {
+		err = os.WriteFile(vm.PIDFile, fmt.Appendf(nil, "%d", pid), 0644)
 	}
-	if err := os.WriteFile(vm.PIDFile, fmt.Appendf(nil, "%d", pid), 0644); err != nil {
-		machine.Shutdown(ctx)
-		return fmt.Errorf("failed to write PID file: %w", err)
+	if err != nil {
+		machine.StopVMM()
+		os.Remove(vm.SocketPath)
+		os.Remove(vm.PIDFile)
+		os.Remove(filepath.Join(vm.dataDir, "console.in"))
+		return fmt.Errorf("failed to record PID: %w", err)
 	}
 
+	// Make sure the manager destroys the VM on early exit.
+	// Also runs on clean shutdown, but this is a no-op in that case.
+	go func() {
+		machine.Wait(context.Background())
+		manager.DestroyVM(vm.ID)
+	}()
+
+	vm.machine = machine
 	return nil
 }
 
 // Stop stops the Firecracker process
 func (vm *VM) Stop() error {
+	vm.mutex.Lock()
+	defer vm.mutex.Unlock()
+
 	if vm.machine != nil {
 		ctx := context.Background()
 		vm.machine.Shutdown(ctx)
