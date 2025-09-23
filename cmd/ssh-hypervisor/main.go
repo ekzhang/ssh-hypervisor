@@ -25,15 +25,15 @@ func getVersion() string {
 
 func main() {
 	var (
-		port            = flag.Int("port", 2222, "SSH server port")
-		hostKey         = flag.String("host-key", "", "Path to SSH host key (generated if not provided)")
-		vmCIDR          = flag.String("vm-cidr", "192.168.100.0/24", "CIDR block for VM IP addresses")
-		vmMemory        = flag.Int("vm-memory", 128, "VM memory in MB")
-		vmCPUs          = flag.Int("vm-cpus", 1, "Number of VM CPUs")
+		port             = flag.Int("port", 2222, "SSH server port")
+		hostKey          = flag.String("host-key", "", "Path to SSH host key (generated if not provided)")
+		vmCIDR           = flag.String("vm-cidr", "192.168.100.0/24", "CIDR block for VM IP addresses")
+		vmMemory         = flag.Int("vm-memory", 128, "VM memory in MB")
+		vmCPUs           = flag.Int("vm-cpus", 1, "Number of VM CPUs")
 		maxConcurrentVMs = flag.Int("max-concurrent-vms", 16, "Maximum number of concurrent VMs (0 = unlimited)")
-		dataDir         = flag.String("data-dir", "./data", "Directory for VM snapshots and data")
-		rootfs          = flag.String("rootfs", "", "Path to rootfs image (required)")
-		version         = flag.Bool("version", false, "Show version information")
+		dataDir          = flag.String("data-dir", "./data", "Directory for VM snapshots and data")
+		rootfs           = flag.String("rootfs", "", "Path to rootfs image (required)")
+		version          = flag.Bool("version", false, "Show version information")
 	)
 
 	flag.Usage = func() {

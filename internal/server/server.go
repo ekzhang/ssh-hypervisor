@@ -336,8 +336,11 @@ func formatRelativeTime(t time.Time) string {
 	now := time.Now()
 	diff := now.Sub(t)
 
-	if diff < time.Minute {
+	if diff < 5*time.Second {
 		return "just now"
+	} else if diff < time.Minute {
+		seconds := int(diff.Seconds())
+		return fmt.Sprintf("%d seconds ago", seconds)
 	} else if diff < time.Hour {
 		minutes := int(diff.Minutes())
 		if minutes == 1 {
