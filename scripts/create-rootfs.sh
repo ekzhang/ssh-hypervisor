@@ -26,7 +26,7 @@ set -euo pipefail
 # NOTE: We gave up on openrc, just going to use sh as an init process now.
 # apk add --no-cache openrc
 
-apk add --no-cache util-linux openssh rng-tools
+apk add --no-cache util-linux openssh
 
 # Set up a login terminal on the serial console (ttyS0):
 # ln -s agetty /etc/init.d/agetty.ttyS0
@@ -39,10 +39,6 @@ apk add --no-cache util-linux openssh rng-tools
 # rc-update add sysfs boot
 # rc-update add localmount boot
 # echo "devpts  /dev/pts  devpts  defaults,gid=5,mode=620,ptmxmode=666  0  0" >> /etc/fstab
-
-# Provide entropy, otherwise sshd will hang
-# rc-update add rngd boot
-# echo 'RNGD_OPTS="-r /dev/urandom"' >> /etc/conf.d/rngd  # TODO: Is this needed?
 
 # rc-update add sshd default
 
@@ -61,11 +57,11 @@ sed -i 's/^#PermitEmptyPasswords.*/PermitEmptyPasswords yes/' /etc/ssh/sshd_conf
 cat >/sbin/init-sshvm <<'EOF'
 #!/bin/sh
 set -euo pipefail
+echo "Starting init-sshvm..."
 mkdir -p /var/empty /var/log /dev/pts
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devpts devpts /dev/pts
-rngd -f -r /dev/urandom &
 /usr/sbin/sshd -D -e
 EOF
 chmod +x /sbin/init-sshvm

@@ -3,7 +3,9 @@ package vm
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -176,7 +178,7 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 	vmlinuxPath := filepath.Join(vm.dataDir, "vmlinux")
 	firecrackerPath := filepath.Join(vm.dataDir, "firecracker")
 
-	bootArgs := "console=ttyS0 pci=off acpi=off noapic reboot=k panic=1 random.trust_cpu=on init=/sbin/init-sshvm"
+	bootArgs := "console=ttyS0 reboot=k panic=1 random.trust_cpu=on init=/sbin/init-sshvm"
 
 	// ip=IP::Gateway:Netmask:Hostname:Interface:off
 	bootArgs += fmt.Sprintf(" ip=%s::%s:%s:%s:eth0:off", vm.IP, vm.Gateway, vm.Netmask, vm.ID)
@@ -260,6 +262,36 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 	if err != nil {
 		return fmt.Errorf("failed to create machine: %w", err)
 	}
+
+	// Need to initialize virtio-rng (entropy) manually since not supported by SDK
+	// https://github.com/firecracker-microvm/firecracker-go-sdk/issues/505
+	machine.Handlers.FcInit = machine.Handlers.FcInit.Append(firecracker.Handler{
+		Name: "virtio-rng",
+		Fn: func(ctx context.Context, m *firecracker.Machine) error {
+			tr := &http.Transport{
+				DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+					return net.Dial("unix", m.Cfg.SocketPath)
+				},
+			}
+			c := &http.Client{Transport: tr}
+			defer c.CloseIdleConnections()
+
+			body := strings.NewReader(`{"rate_limiter":{"bandwidth":{"size":4096,"one_time_burst":4096,"refill_time":100}}}`)
+			req, _ := http.NewRequestWithContext(ctx, http.MethodPut, "http://unix/entropy", body)
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := c.Do(req)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusNoContent {
+				b, _ := io.ReadAll(resp.Body)
+				return fmt.Errorf("entropy PUT failed: %s: %s", resp.Status, string(b))
+			}
+			return nil
+		},
+	})
+
 	vm.machine = machine
 
 	// Start the machine
