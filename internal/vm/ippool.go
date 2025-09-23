@@ -99,6 +99,12 @@ func (p *IPPool) Netmask() net.IP {
 	return net.IP(p.network.Mask)
 }
 
+// MaskSize returns the number of bits in the network mask (e.g. 24 for /24)
+func (p *IPPool) MaskSize() int {
+	maskSize, _ := p.network.Mask.Size()
+	return maskSize
+}
+
 // inc increments an IP address
 func inc(ip net.IP) {
 	for j := len(ip) - 1; j >= 0; j-- {

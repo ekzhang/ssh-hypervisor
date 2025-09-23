@@ -440,7 +440,8 @@ func (m *Manager) setupNetworkBridge() error {
 
 	// Configure bridge IP (gateway)
 	gateway := m.ipPool.Gateway()
-	gatewayWithMask := fmt.Sprintf("%s/24", gateway) // TODO: make this dynamic based on network mask
+	maskSize := m.ipPool.MaskSize()
+	gatewayWithMask := fmt.Sprintf("%s/%d", gateway, maskSize)
 	if err := exec.Command("ip", "addr", "add", gatewayWithMask, "dev", m.bridgeName).Run(); err != nil {
 		// Ignore error if address already exists
 		if !strings.Contains(err.Error(), "File exists") {
