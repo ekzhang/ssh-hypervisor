@@ -42,7 +42,9 @@ jobs:
         run: ./ssh-hypervisor -version
 
       - name: Add runner to KVM ACL
+        if: matrix.os == 'ubuntu-24.04'
         run: sudo setfacl -m u:"$(whoami)":rw /dev/kvm
 
       - name: Run tests
+        if: matrix.os == 'ubuntu-24.04'
         run: go test -v -exec sudo ./...
