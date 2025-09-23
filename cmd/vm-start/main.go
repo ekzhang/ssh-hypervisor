@@ -25,9 +25,10 @@ func getVersion() string {
 
 func main() {
 	var (
-		dataDir = flag.String("data-dir", "./data", "Directory for VM snapshots and data")
-		rootfs  = flag.String("rootfs", "", "Path to rootfs image (required)")
-		version = flag.Bool("version", false, "Show version information")
+		dataDir       = flag.String("data-dir", "./data", "Directory for VM snapshots and data")
+		rootfs        = flag.String("rootfs", "", "Path to rootfs image (required)")
+		allowInternet = flag.Bool("allow-internet", false, "Allow VMs to access the internet")
+		version       = flag.Bool("version", false, "Show version information")
 	)
 
 	flag.Usage = func() {
@@ -45,13 +46,14 @@ func main() {
 	}
 
 	config := &internal.Config{
-		Port:     2222,
-		HostKey:  "",
-		VMCIDR:   "192.168.100.0/24",
-		VMMemory: 128,
-		VMCPUs:   1,
-		DataDir:  *dataDir,
-		Rootfs:   *rootfs,
+		Port:          2222,
+		HostKey:       "",
+		VMCIDR:        "192.168.100.0/24",
+		VMMemory:      128,
+		VMCPUs:        1,
+		DataDir:       *dataDir,
+		Rootfs:        *rootfs,
+		AllowInternet: *allowInternet,
 	}
 
 	if err := config.Validate(); err != nil {

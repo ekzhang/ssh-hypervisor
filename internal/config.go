@@ -17,6 +17,7 @@ type Config struct {
 	MaxConcurrentVMs int    // Maximum number of concurrent VMs (0 = unlimited)
 	DataDir          string // Directory for VM snapshots and data
 	Rootfs           string // Path to rootfs image
+	AllowInternet    bool   // Allow VMs to access the Internet
 }
 
 // Validate checks if the configuration is valid

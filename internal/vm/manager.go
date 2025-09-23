@@ -20,6 +20,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	// BridgeName is the name of the network bridge used for VMs
+	BridgeName = "sshvm-br0"
+)
+
 // VM represents a single Firecracker microVM instance
 type VM struct {
 	ID         string
@@ -59,14 +64,12 @@ func NewManager(config *internal.Config, logger logrus.FieldLogger, firecrackerB
 		return nil, fmt.Errorf("failed to create IP pool: %w", err)
 	}
 
-	bridgeName := "sshvm-br0"
-
 	manager := &Manager{
 		config:     config,
 		vms:        make(map[string]*VM),
 		vmRefs:     make(map[string]int),
 		ipPool:     ipPool,
-		bridgeName: bridgeName,
+		bridgeName: BridgeName,
 		logger:     logger,
 	}
 
@@ -89,6 +92,16 @@ func NewManager(config *internal.Config, logger logrus.FieldLogger, firecrackerB
 	// Set up network bridge
 	if err := manager.setupNetworkBridge(); err != nil {
 		return nil, fmt.Errorf("failed to setup network bridge: %w", err)
+	}
+
+	// Set up iptables rules for internet access if enabled
+	if err := cleanupIptablesRules(); err != nil {
+		return nil, fmt.Errorf("failed to clean up existing iptables rules: %w", err)
+	}
+	if config.AllowInternet {
+		if err := manager.setupIptablesRules(); err != nil {
+			return nil, fmt.Errorf("failed to setup iptables rules: %w", err)
+		}
 	}
 
 	return manager, nil

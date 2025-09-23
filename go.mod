@@ -5,6 +5,7 @@ go 1.25.1
 require (
 	github.com/charmbracelet/ssh v0.0.0-20250826160808-ebfa259c7309
 	github.com/charmbracelet/wish v1.4.7
+	github.com/coreos/go-iptables v0.8.0
 	github.com/firecracker-microvm/firecracker-go-sdk v1.0.0
 	github.com/olekukonko/tablewriter v1.1.0
 	github.com/sirupsen/logrus v1.9.3

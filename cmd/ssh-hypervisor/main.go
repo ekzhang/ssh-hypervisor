@@ -33,6 +33,7 @@ func main() {
 		maxConcurrentVMs = flag.Int("max-concurrent-vms", 16, "Maximum number of concurrent VMs (0 = unlimited)")
 		dataDir          = flag.String("data-dir", "./data", "Directory for VM snapshots and data")
 		rootfs           = flag.String("rootfs", "", "Path to rootfs image (required)")
+		allowInternet    = flag.Bool("allow-internet", false, "Allow VMs to access the internet")
 		version          = flag.Bool("version", false, "Show version information")
 	)
 
@@ -59,6 +60,7 @@ func main() {
 		MaxConcurrentVMs: *maxConcurrentVMs,
 		DataDir:          *dataDir,
 		Rootfs:           *rootfs,
+		AllowInternet:    *allowInternet,
 	}
 
 	if err := config.Validate(); err != nil {
