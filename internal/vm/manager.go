@@ -178,7 +178,7 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 	vmlinuxPath := filepath.Join(vm.dataDir, "vmlinux")
 	firecrackerPath := filepath.Join(vm.dataDir, "firecracker")
 
-	bootArgs := "console=ttyS0 reboot=k panic=1 random.trust_cpu=on init=/sbin/init-sshvm"
+	bootArgs := "console=ttyS0 reboot=k panic=1 random.trust_cpu=on"
 
 	// ip=IP::Gateway:Netmask:Hostname:Interface:off
 	bootArgs += fmt.Sprintf(" ip=%s::%s:%s:%s:eth0:off", vm.IP, vm.Gateway, vm.Netmask, vm.ID)

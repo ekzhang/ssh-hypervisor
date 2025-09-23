@@ -23,24 +23,22 @@ docker run -i --rm \
   alpine sh <<EOS
 set -euo pipefail
 
-# NOTE: We gave up on openrc, just going to use sh as an init process now.
-# apk add --no-cache openrc
-
+apk add --no-cache openrc
 apk add --no-cache util-linux openssh
 
 # Set up a login terminal on the serial console (ttyS0):
-# ln -s agetty /etc/init.d/agetty.ttyS0
-# echo ttyS0 > /etc/securetty
-# rc-update add agetty.ttyS0 default
+ln -s agetty /etc/init.d/agetty.ttyS0
+echo ttyS0 > /etc/securetty
+rc-update add agetty.ttyS0 default
 
 # Make sure special file systems are mounted on boot:
-# rc-update add devfs boot
-# rc-update add procfs boot
-# rc-update add sysfs boot
-# rc-update add localmount boot
-# echo "devpts  /dev/pts  devpts  defaults,gid=5,mode=620,ptmxmode=666  0  0" >> /etc/fstab
+rc-update add devfs boot
+rc-update add procfs boot
+rc-update add sysfs boot
+rc-update add localmount boot
+echo "devpts  /dev/pts  devpts  defaults,gid=5,mode=620,ptmxmode=666  0  0" >> /etc/fstab
 
-# rc-update add sshd default
+rc-update add sshd default
 
 # Remove the message of the day
 rm /etc/motd
@@ -52,19 +50,6 @@ ssh-keygen -A
 passwd -d root
 sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 sed -i 's/^#PermitEmptyPasswords.*/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
-
-# Create the custom init script
-cat >/sbin/init-sshvm <<'EOF'
-#!/bin/sh
-set -euo pipefail
-echo "Starting init-sshvm..."
-mkdir -p /var/empty /var/log /dev/pts
-mount -t proc proc /proc
-mount -t sysfs sysfs /sys
-mount -t devpts devpts /dev/pts
-/usr/sbin/sshd -D -e
-EOF
-chmod +x /sbin/init-sshvm
 
 # Then, copy the newly configured system to the rootfs image:
 for d in bin etc lib root sbin usr; do tar c "/\$d" | tar x -C /my-rootfs; done
