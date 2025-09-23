@@ -62,6 +62,7 @@ func (s *Server) Run(ctx context.Context) error {
 	s.logger.Printf("  VM CIDR: %s", s.config.VMCIDR)
 	s.logger.Printf("  VM Memory: %d MB", s.config.VMMemory)
 	s.logger.Printf("  VM CPUs: %d", s.config.VMCPUs)
+	s.logger.Printf("  Max concurrent VMs: %d", s.config.MaxConcurrentVMs)
 	s.logger.Printf("  Data directory: %s", s.config.DataDir)
 
 	hostKey, err := s.loadOrGenerateHostKey()

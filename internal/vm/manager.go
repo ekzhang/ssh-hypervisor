@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/ekzhang/ssh-hypervisor/internal"
 	"github.com/firecracker-microvm/firecracker-go-sdk"
@@ -163,14 +164,17 @@ func (m *Manager) createVMInternal(ctx context.Context, vmID string) (*VM, error
 	}
 
 	// Copy the rootfs image to the VM data directory (writable)
-	buf, err := os.ReadFile(vm.config.Rootfs)
-	if err == nil {
-		err = os.WriteFile(filepath.Join(vmDataDir, "rootfs.img"), buf, 0644)
-	}
-	if err != nil {
-		m.ipPool.Release(ip)
-		os.RemoveAll(vmDataDir)
-		return nil, fmt.Errorf("failed to copy rootfs image: %w", err)
+	rootfsPath := filepath.Join(vmDataDir, "rootfs.img")
+	if _, err := os.Stat(rootfsPath); os.IsNotExist(err) {
+		buf, err := os.ReadFile(vm.config.Rootfs)
+		if err == nil {
+			err = os.WriteFile(rootfsPath, buf, 0644)
+		}
+		if err != nil {
+			m.ipPool.Release(ip)
+			os.RemoveAll(vmDataDir)
+			return nil, fmt.Errorf("failed to copy rootfs image: %w", err)
+		}
 	}
 
 	// Start the VM
@@ -255,7 +259,7 @@ func (m *Manager) DestroyVM(vmID string) error {
 
 // Start starts the Firecracker process for this VM
 func (vm *VM) Start(ctx context.Context, manager *Manager) error {
-	// Remove existing socket
+	// Remove existing socket, if any
 	os.Remove(vm.SocketPath)
 
 	vmlinuxPath := filepath.Join(vm.config.DataDir, "vmlinux")
@@ -402,20 +406,17 @@ func (vm *VM) Start(ctx context.Context, manager *Manager) error {
 func (vm *VM) Stop() error {
 	if vm.machine != nil {
 		ctx := context.Background()
-		err := vm.machine.Shutdown(ctx)
+		vm.machine.Shutdown(ctx)
 
+		// HACK: Give it a moment to shut down cleanly
+		time.Sleep(250 * time.Millisecond)
 		vm.machine.StopVMM()
 		vm.machine.Wait(ctx)
 
-		// Clean up only VM-specific files, preserve data directory and shared binaries
-		os.Remove(vm.SocketPath)                            // firecracker.sock
-		os.Remove(vm.PIDFile)                               // firecracker.pid
-		os.Remove(filepath.Join(vm.dataDir, "console.in"))  // console.in
-		os.Remove(filepath.Join(vm.dataDir, "console.out")) // console.out
-
-		if err != nil {
-			return fmt.Errorf("failed to shutdown machine: %w", err)
-		}
+		// Clean up only VM-specific files, preserve data and console output
+		os.Remove(vm.SocketPath)                           // firecracker.sock
+		os.Remove(vm.PIDFile)                              // firecracker.pid
+		os.Remove(filepath.Join(vm.dataDir, "console.in")) // console.in
 
 		vm.machine = nil
 	}

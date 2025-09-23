@@ -40,8 +40,9 @@ echo "devpts  /dev/pts  devpts  defaults,gid=5,mode=620,ptmxmode=666  0  0" >> /
 
 rc-update add sshd default
 
-# Change shell to bash
+# Change shell to bash and add colored prompt
 sed -i 's|/bin/sh|/bin/bash|' /etc/passwd
+echo "PS1='\${debian_chroot:+(\$debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '" >> ~/.bash_profile
 
 # Remove the message of the day
 rm /etc/motd
