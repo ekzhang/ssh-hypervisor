@@ -132,8 +132,6 @@ func (s *Server) periodicStatsSave(ctx context.Context) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
-	s.logger.Printf("Started periodic user stats saving (every 30 seconds)")
-
 	for {
 		select {
 		case <-ctx.Done():

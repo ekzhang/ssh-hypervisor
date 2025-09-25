@@ -32,6 +32,9 @@ func (c *Config) Validate() error {
 	if err != nil {
 		return fmt.Errorf("invalid VM CIDR: %v", err)
 	}
+	if ipNet.IP.To4() == nil {
+		return fmt.Errorf("only IPv4 CIDR is supported")
+	}
 
 	// Check if CIDR is large enough (at least /28 for 14 usable IPs)
 	ones, _ := ipNet.Mask.Size()
