@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/ekzhang/ssh-hypervisor/internal"
@@ -72,7 +73,14 @@ func main() {
 	log.Printf("VM network: %s", config.VMCIDR)
 	log.Printf("Data directory: %s", config.DataDir)
 
-	testVM, err := manager.GetOrCreateVM(ctx, "test-user")
+	vmID := "test-user"
+
+	// Remove existing VM data if any, so we have a clean start.
+	if err = os.RemoveAll(filepath.Join(config.DataDir, vmID)); err != nil {
+		log.Fatalf("Failed to remove existing VM data: %v", err)
+	}
+
+	testVM, err := manager.GetOrCreateVM(ctx, vmID)
 	if err != nil {
 		log.Fatalf("Failed to create VM: %v", err)
 	}
