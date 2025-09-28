@@ -59,3 +59,5 @@ scripts/create-rootfs.sh
 
 ./ssh-hypervisor -rootfs rootfs.ext4
 ```
+
+Your user must be able to access `/dev/kvm`, e.g., by being in the `kvm` group. VMs may not have Internet access by default unless you pass `-allow-internet`.
