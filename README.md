@@ -2,7 +2,7 @@
 
 _Like SimCity, but for virtual machines!_
 
-![](https://ssh-hypervisor.s3.us-east-1.amazonaws.com/vmcity-screencast.gif)
+![Screen recording of using ssh-hypervisor](https://i.imgur.com/AxtMjJL.gif)
 
 `ssh-hypervisor` is an SSH server that dynamically provisions Linux microVMs with [Firecracker](https://github.com/firecracker-microvm/firecracker). Once set up, you can just SSH into it from anywhere to instantly allocate a fresh VM.
 
